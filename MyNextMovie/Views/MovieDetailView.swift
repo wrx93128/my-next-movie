@@ -77,7 +77,30 @@ private struct MovieInfo: View {
     // - `overview`: the header `Text("Overview")` in `.headline`
     //   and `Text(movie.overview)` in `.secondary` under it.
     var body: some View {
-        Text(movie.title)
+        VStack(alignment: .leading, spacing: spacingLarge) {
+            heading
+            GenreRow(genreIds: knownGenreIds(movie))
+            overview
+        }
+    }
+    private var heading: some View {
+        VStack(alignment: .leading, spacing: spacingSmall) {
+            Text(movie.title)
+                .font(.system(.largeTitle, design: .serif, weight: .bold))
+            
+            Text(yearAndRating(movie))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+    }
+    private var overview: some View {
+        VStack(alignment: .leading) {
+            Text("Overview")
+                .font(.headline)
+            
+            Text(movie.overview)
+                .foregroundStyle(.secondary)
+        }
     }
 }
 
@@ -90,7 +113,14 @@ private struct GenreRow: View {
     // draws a `GenreChip(genreId:)` for every id. `Int` is not `Identifiable`, hence `id: \.self`.
     // Add `.scrollClipDisabled()` so the chips are not cut at the screen edge.
     var body: some View {
-        EmptyView()
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: spacingSmall) {
+                ForEach(genreIds, id: \.self) { genreId in
+                    GenreChip(genreId: genreId)
+                }
+            }
+        }
+        .scrollClipDisabled()
     }
 }
 

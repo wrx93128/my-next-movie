@@ -70,20 +70,30 @@ private struct MovieGrid: View {
     // - row spacing: `spacingExtraLarge`,
     // - content: `ForEach(movies)` with a `MovieGridItem` for every movie.
     private var grid: some View {
-        Text("\(movies.count) movies, build the grid here")
+        let columns = [
+            GridItem(.adaptive(minimum: gridMinimumColumnWidth), spacing: spacingLarge)
+        ]
+
+        return LazyVGrid(columns: columns, spacing: spacingExtraLarge) {
+            ForEach(movies) { movie in
+                MovieGridItem(movie: movie)
+            }
+        }
     }
 }
 
 /// One cell of the grid. Tapping it opens the movie details.
 private struct MovieGridItem: View {
     let movie: Movie
-
     // TODO: Lab 1, task 1. Wrap the card in `NavigationLink(value: movie)`.
     // `MovieListView` already turns the value into a `MovieDetailView`
     // with `.navigationDestination(for: Movie.self)`.
     // Add `.buttonStyle(.plain)`, otherwise the whole card turns blue.
     var body: some View {
-        MovieCardView(movie: movie)
+        NavigationLink(value: movie) {
+            MovieCardView(movie: movie)
+        }
+        .buttonStyle(.plain)
     }
 }
 

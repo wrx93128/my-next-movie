@@ -8,7 +8,7 @@ private let cardTextMaxLines = 1
 /// One movie in the grid: the poster with a rating badge, the title and the subtitle under it.
 struct MovieCardView: View {
     let movie: Movie
-
+    
     // TODO: Lab 1, task 1. Build the card:
     // - a `VStack(alignment: .leading, spacing: spacingSmall)` with `poster` and `caption`,
     // - `poster`: `PosterView(movie:)` with `RatingBadge(movie:)` in its top trailing corner
@@ -20,7 +20,33 @@ struct MovieCardView: View {
     //   Both texts get `.lineLimit(cardTextMaxLines)`.
     // Split the body into computed properties, as in `MovieDetailView`.
     var body: some View {
-        Text(movie.title)
+        VStack(alignment: .leading, spacing: spacingSmall) {
+            poster
+            caption
+        }
+    }
+    private var poster: some View {
+        PosterView(movie: movie)
+            .overlay(alignment: .topTrailing) {
+                RatingBadge(movie: movie).padding(spacingSmall)
+            }
+            .shadow(
+                color: cardShadowColor,
+                radius: cardShadowRadius,
+                x: 0,
+                y: cardShadowOffset
+            )
+    }
+    private var caption: some View {
+        VStack(alignment: .leading, spacing: spacingTiny) {
+            Text(movie.title)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(cardTextMaxLines)
+            Text(movieSubtitle(movie))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(cardTextMaxLines)
+        }
     }
 }
 
