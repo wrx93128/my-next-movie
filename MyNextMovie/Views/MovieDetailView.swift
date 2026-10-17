@@ -9,17 +9,49 @@ private let posterShadowOffset: CGFloat = 10
 
 struct MovieDetailView: View {
     let movie: Movie
+    @State private var viewModel: MovieDetailViewModel
+
+    init(movie: Movie, loadDetails: @escaping MovieDetailsLoader) {
+        self.movie = movie
+        _viewModel = State(initialValue: MovieDetailViewModel(movieId: movie.id, loadDetails: loadDetails))
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: spacingExtraLarge) {
                 MovieBackdrop(movie: movie)
-                MovieInfo(movie: movie).padding(.horizontal)
+                MovieInfo(movie: movie, details: viewModel.details).padding(.horizontal)
+                detailsContent.padding(.horizontal)
             }
             .padding(.bottom, spacingHuge)
         }
         .ignoresSafeArea(edges: .top)
         .navigationBarTitleDisplayMode(.inline)
+        .task { await viewModel.loadIfNeeded() }
+    }
+
+    @ViewBuilder
+    private var detailsContent: some View {
+        switch viewModel.state {
+        case .idle, .loading:
+            ProgressView()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical)
+        case .loaded:
+            MovieDetailSections(details: viewModel.details)
+        case .failed:
+            VStack(spacing: spacingMedium) {
+                Text(viewModel.errorMessage)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button("Try again") {
+                    Task { await viewModel.load() }
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical)
+        }
     }
 }
 
@@ -65,41 +97,64 @@ private struct BlurredPoster: View {
     }
 }
 
-/// Title, year and rating, genres and overview under the backdrop.
 private struct MovieInfo: View {
     let movie: Movie
+    let details: MovieDetails
 
-    // TODO: Lab 1, task 2. A `VStack(alignment: .leading, spacing: spacingLarge)` with:
-    // - `heading`: a `VStack(alignment: .leading, spacing: spacingSmall)` with
-    //   `Text(movie.title)` in `.system(.largeTitle, design: .serif, weight: .bold)`
-    //   and `Text(yearAndRating(movie))` in `.subheadline`, `.secondary`,
-    // - `GenreRow(genreIds: knownGenreIds(movie))`,
-    // - `overview`: the header `Text("Overview")` in `.headline`
-    //   and `Text(movie.overview)` in `.secondary` under it.
     var body: some View {
         VStack(alignment: .leading, spacing: spacingLarge) {
             heading
             GenreRow(genreIds: knownGenreIds(movie))
             overview
+            directedBy
         }
     }
+
     private var heading: some View {
         VStack(alignment: .leading, spacing: spacingSmall) {
             Text(movie.title)
                 .font(.system(.largeTitle, design: .serif, weight: .bold))
-            
-            Text(yearAndRating(movie))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+
+            if !details.tagline.isEmpty {
+                Text(details.tagline)
+                    .font(.subheadline)
+                    .italic()
+                    .foregroundStyle(.secondary)
+            }
+
+            let facts = movieFactsLine(movie, details)
+            if !facts.isEmpty {
+                Text(facts)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
+
+    @ViewBuilder
     private var overview: some View {
-        VStack(alignment: .leading) {
-            Text("Overview")
-                .font(.headline)
-            
-            Text(movie.overview)
-                .foregroundStyle(.secondary)
+        if !movie.overview.isEmpty {
+            VStack(alignment: .leading) {
+                Text("Overview")
+                    .font(.headline)
+
+                Text(movie.overview)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var directedBy: some View {
+        let directors = directorNames(details)
+        if !directors.isEmpty {
+            VStack(alignment: .leading, spacing: spacingExtraSmall) {
+                Text("Directed by")
+                    .font(.headline)
+
+                Text(directors)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }
@@ -108,10 +163,6 @@ private struct MovieInfo: View {
 private struct GenreRow: View {
     let genreIds: [Int]
 
-    // TODO: Lab 1, task 2. A `ScrollView(.horizontal, showsIndicators: false)` with
-    // an `HStack(spacing: spacingSmall)` inside. In the `HStack`, a `ForEach(genreIds, id: \.self)`
-    // draws a `GenreChip(genreId:)` for every id. `Int` is not `Identifiable`, hence `id: \.self`.
-    // Add `.scrollClipDisabled()` so the chips are not cut at the screen edge.
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: spacingSmall) {
@@ -126,6 +177,8 @@ private struct GenreRow: View {
 
 #Preview {
     NavigationStack {
-        MovieDetailView(movie: sampleMovies[0])
+        PopularMoviesPreview { movies in
+            MovieDetailView(movie: movies[0], loadDetails: fetchMovieDetails)
+        }
     }
 }

@@ -1,19 +1,25 @@
 import SwiftUI
 
 private let gridMinimumColumnWidth: CGFloat = 150
+private let placeholderMovieCount = 6
+private let placeholderMovieTitle = "Movie title"
 
 struct MovieListView: View {
     @State private var viewModel: MovieListViewModel
+    private let loadDetails: MovieDetailsLoader
 
-    init(viewModel: MovieListViewModel) {
+    init(viewModel: MovieListViewModel, loadDetails: @escaping MovieDetailsLoader) {
         _viewModel = State(initialValue: viewModel)
+        self.loadDetails = loadDetails
     }
 
     var body: some View {
         NavigationStack {
             content
                 .navigationTitle("My Next Movie")
-                .navigationDestination(for: Movie.self) { movie in MovieDetailView(movie: movie) }
+                .navigationDestination(for: Movie.self) { movie in
+                    MovieDetailView(movie: movie, loadDetails: loadDetails)
+                }
         }
         .task { await viewModel.loadIfNeeded() }
     }
@@ -32,9 +38,9 @@ struct MovieListView: View {
         }
     }
 
-    /// Sample movies drawn as gray shapes while the real ones load.
+    /// Placeholder movies drawn as gray shapes while the real ones load.
     private var loadingGrid: some View {
-        MovieGrid(title: "Popular", movies: sampleMovies)
+        MovieGrid(title: "Popular", movies: makePlaceholderMovies())
             .redacted(reason: .placeholder)
             .allowsHitTesting(false)
     }
@@ -46,6 +52,20 @@ struct MovieListView: View {
         } else {
             MovieGrid(title: "Popular", movies: viewModel.movies)
         }
+    }
+}
+
+private func makePlaceholderMovies() -> [Movie] {
+    (1...placeholderMovieCount).map { id in
+        Movie(
+            id: id,
+            title: placeholderMovieTitle,
+            overview: "",
+            releaseDate: "",
+            posterPath: nil,
+            voteAverage: 0,
+            genreIds: []
+        )
     }
 }
 
@@ -64,11 +84,6 @@ private struct MovieGrid: View {
         }
     }
 
-    // TODO: Lab 1, task 1. Replace the text with a `LazyVGrid`:
-    // - columns: one `GridItem(.adaptive(minimum: gridMinimumColumnWidth), spacing: spacingLarge)`,
-    //   so the grid fits as many columns as the screen width allows,
-    // - row spacing: `spacingExtraLarge`,
-    // - content: `ForEach(movies)` with a `MovieGridItem` for every movie.
     private var grid: some View {
         let columns = [
             GridItem(.adaptive(minimum: gridMinimumColumnWidth), spacing: spacingLarge)
@@ -85,10 +100,7 @@ private struct MovieGrid: View {
 /// One cell of the grid. Tapping it opens the movie details.
 private struct MovieGridItem: View {
     let movie: Movie
-    // TODO: Lab 1, task 1. Wrap the card in `NavigationLink(value: movie)`.
-    // `MovieListView` already turns the value into a `MovieDetailView`
-    // with `.navigationDestination(for: Movie.self)`.
-    // Add `.buttonStyle(.plain)`, otherwise the whole card turns blue.
+
     var body: some View {
         NavigationLink(value: movie) {
             MovieCardView(movie: movie)
@@ -98,5 +110,8 @@ private struct MovieGridItem: View {
 }
 
 #Preview {
-    MovieListView(viewModel: MovieListViewModel(loadMovies: loadSampleMovies))
+    MovieListView(
+        viewModel: MovieListViewModel(loadMovies: fetchPopularMovies),
+        loadDetails: fetchMovieDetails
+    )
 }
